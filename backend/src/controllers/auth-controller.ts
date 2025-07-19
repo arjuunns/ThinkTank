@@ -2,11 +2,13 @@ import { Request, Response, NextFunction } from "express";
 import { PrismaClient } from "@prisma/client";
 import hashPassword from "../utils/hash-password";
 import generateToken from "../utils/generate-token";
+import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcrypt'
 const prisma  = new PrismaClient()
 
 const userSignup = async (req: Request, res: Response): Promise<any> => {
-    const { email, password } = req.body as { email?: string; password?: string };
+    const email : string = req.body.email
+    const password : string = req.body.password
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required" });
     }
@@ -27,10 +29,17 @@ const userSignup = async (req: Request, res: Response): Promise<any> => {
             data: {
               email: email,
               password: hashedPassword,
-            },
+            }
           });
+          const hashedLink : string = uuidv4()
+          await prisma.link.create({
+            data : {
+              hash : hashedLink,
+              userId: user.id,
+            }
+          })
           res.status(200).json({
-            message: "User signed up successfully",
+            message: "User signed up successfully, shareable link also generated",
             data: {
               email: email,
             },

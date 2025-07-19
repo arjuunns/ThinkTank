@@ -1,3 +1,9 @@
-export default function f() {
-    console.log(132);  
-}
+import express from "express";
+const Router = express.Router();
+
+
+Router.get('/',(req,res,next) => {
+
+})
+
+export default Router
