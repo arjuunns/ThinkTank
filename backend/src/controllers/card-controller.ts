@@ -215,7 +215,7 @@ const updateCard = async (req: Request, res: Response): Promise<any> => {
   }
 };
 
-const getAiGeneratedCard = async (req: Request,res: Response,next: NextFunction): Promise<any> => {
+const getAiGeneratedCard = async (req: Request,res: Response): Promise<any> => {
 
   if (!req.metadata) {
     res.status(400).json({
@@ -275,7 +275,6 @@ Start your response immediately with { and end with }`;
     });
     return;
   }
-  next();
 };
 
 export { deleteCard, postCard, getCards, getAiGeneratedCard, updateCard };
