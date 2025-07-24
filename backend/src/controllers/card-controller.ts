@@ -1,8 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import { PrismaClient } from "@prisma/client";
+import { ResponseType } from "../types/meta-data-response-type";
+import { GoogleGenAI } from "@google/genai";
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+});
+
 const prisma = new PrismaClient();
 
-const postCard = async (req: Request, res: Response): Promise<void> => {
+const postCard = async (req: Request, res: Response): Promise<any> => {
   const user = (req as any).user;
   const body = req.body;
   const link = body.link;
@@ -110,7 +116,7 @@ const getCards = async (req: Request, res: Response): Promise<any> => {
 
     const skip = (page - 1) * perPage;
     const take = perPage;
-    where.userId = (req as any).user.id
+    where.userId = (req as any).user.id;
     const [cards, total] = await Promise.all([
       prisma.content.findMany({
         where,
@@ -146,11 +152,6 @@ const getCards = async (req: Request, res: Response): Promise<any> => {
     });
   }
 };
-
-const getAiGeneratedCard = async (
-  req: Request,
-  res: Response
-): Promise<any> => {};
 
 const updateCard = async (req: Request, res: Response): Promise<any> => {
   const user = (req as any).user;
@@ -212,6 +213,69 @@ const updateCard = async (req: Request, res: Response): Promise<any> => {
       error: (err as Error).message,
     });
   }
+};
+
+const getAiGeneratedCard = async (req: Request,res: Response,next: NextFunction): Promise<any> => {
+
+  if (!req.metadata) {
+    res.status(400).json({
+      message: "Metadata is missing from the request",
+    });
+    return;
+  }
+  const metadata: ResponseType = req.metadata;
+  const prompt = `You are a JSON generator. Analyze the following metadata and return ONLY a valid JSON object. Do not include any markdown formatting, code blocks, explanations, or additional text.
+
+Metadata to analyze:
+${JSON.stringify(metadata, null, 2)}
+
+Return exactly this JSON structure with actual extracted data:
+{"link":"${metadata.url}","title":"extracted title here","tags":["tag1","tag2","tag3"],"description":"description here","type":"article"}
+
+CRITICAL INSTRUCTIONS:
+- Return ONLY the JSON object starting with { and ending with }
+- NO markdown code blocks or triple backticks
+- NO explanations or additional text
+- NO line breaks or formatting
+- Extract actual meaningful data from the metadata
+- Title should be max 60 characters
+- Generate 3-5 relevant lowercase tags
+- Description should be 2-3 sentences
+- Type must be one of: article, video, image, audio
+
+Start your response immediately with { and end with }`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+    });
+    let structuredJSON = response.text || "{}";
+    
+    // Clean up the response to remove any markdown formatting
+    structuredJSON = structuredJSON
+      .replace(/```json\s*/g, '')  // Remove ```json
+      .replace(/```\s*/g, '')      // Remove closing ```
+      .replace(/^[^{]*/, '')       // Remove anything before the first {
+      .replace(/[^}]*$/, '')       // Remove anything after the last }
+      .trim();
+    
+    // console.log('Cleaned JSON:', structuredJSON);
+    
+    const parsedJSON = JSON.parse(structuredJSON);
+    res.status(200).json({
+      message: "AI generated card successfully",
+      data: parsedJSON,
+    });
+  } catch (error) {
+    console.error('Error details:', error);
+    res.status(500).json({
+      message: "Failed to generate card from AI",
+      error: (error as Error).message,
+    });
+    return;
+  }
+  next();
 };
 
 export { deleteCard, postCard, getCards, getAiGeneratedCard, updateCard };

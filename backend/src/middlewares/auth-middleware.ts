@@ -4,7 +4,8 @@ import { JwtPayload } from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
-const secret = "sadljsaf"
+const secret = process.env.JWT_SECRET
+
 async function authenticated(req: Request, res: Response, next: NextFunction) {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {

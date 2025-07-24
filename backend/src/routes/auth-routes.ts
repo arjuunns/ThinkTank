@@ -6,6 +6,5 @@ const Router = express.Router();
 
 Router.post("/signup", userSignup);
 Router.get("/signin", userSignIn);
-// Router.get("/protected", )
 
 export default Router;
